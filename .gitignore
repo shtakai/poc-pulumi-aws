@@ -3,3 +3,5 @@
 .envrc
 .env
 /node_modules/
+*.checkpoint.json
+*.bak
