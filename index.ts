@@ -5,7 +5,7 @@ const env = pulumi.getStack()
 const networkCongig = new pulumi.Config('network')
 const keyConfig = new pulumi.Config('key')
 
-const ec2Key = keyConfig.require('ec2_key')
+const ec2Key = keyConfig.requireSecret('ec2_key')
 
 const vpcCidr = networkCongig.require('vpc')
 const puclicCidr0 = networkCongig.require('public_0')
