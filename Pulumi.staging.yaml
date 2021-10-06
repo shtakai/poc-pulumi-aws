@@ -7,3 +7,5 @@ config:
   network:public_1: 10.1.1.0/24
   network:public_2: 10.1.2.0/24
   network:vpc: 10.1.0.0/20
+  key:ec2_key:
+    secure: AAABAKRpba+uc5n3+WiHCHCcJvQRGCqdK/xBdvHGqOUvm4U6rFP3J7QZsrn4hhKE
