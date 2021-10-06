@@ -3,6 +3,9 @@ import * as aws from "@pulumi/aws";
 
 const env = pulumi.getStack()
 const networkCongig = new pulumi.Config('network')
+const keyConfig = new pulumi.Config('key')
+
+const ec2Key = keyConfig.require('ec2_key')
 
 const vpcCidr = networkCongig.require('vpc')
 const puclicCidr0 = networkCongig.require('public_0')
@@ -160,33 +163,95 @@ const publicRouteTableAssociation2 = new aws.ec2.RouteTableAssociation(
   }
 )
 
-// const group = new aws.ec2.SecurityGroup("web-sg", {
-//     description: `${env} : Enable HTTP access`,
-//     ingress: [
-//       // { protocosl: "tcp", fromPort: 22, toPort: 22, cidrBlocks: ["0.0.0.0/0"] },
-//       { protocol: "tcp", fromPort: 80, toPort: 80, cidrBlocks: ["0.0.0.0/0"] },
-//     ],
-//     tags: {
-//       Name: `sg ${env} web`
-//     }
-//   }
-// );
+const privateRouteTableName = `app-${env}-private-route-table`
+const privateRouteTable = new aws.ec2.RouteTable(
+  privateRouteTableName,
+  {
+    vpcId: vpc.id,
+    tags: {
+      Name: privateRouteTableName
+    }
+  }
+)
 
-// const userData =
-// `#!/bin/bash
-// echo "Hello, World! tetete ${env}}" > index.html
-// nohup python -m SimpleHTTPServer 80 &`;
+const privateRouteTableAssociation0 = new aws.ec2.RouteTableAssociation(
+  'private association 0',
+  {
+    routeTableId: privateRouteTable.id,
+    subnetId: privateSubnet0.id
+  }
+)
+const privateRouteTableAssociation1 = new aws.ec2.RouteTableAssociation(
+  'private association 1',
+  {
+    routeTableId: privateRouteTable.id,
+    subnetId: privateSubnet1.id
+  }
+)
+const privateRouteTableAssociation2 = new aws.ec2.RouteTableAssociation(
+  'private association 2',
+  {
+    routeTableId: privateRouteTable.id,
+    subnetId: privateSubnet2.id
+  }
+)
+const group = new aws.ec2.SecurityGroup("web-sg", {
+    description: `${env} : Enable HTTP access`,
+    vpcId: vpc.id,
+    ingress: [
+      { protocol: "tcp", fromPort: 22, toPort: 22, cidrBlocks: ["0.0.0.0/0"] },
+      { protocol: "tcp", fromPort: 80, toPort: 80, cidrBlocks: ["0.0.0.0/0"] },
+      { protocol: "icmp", fromPort: -1, toPort: -1, cidrBlocks: ["0.0.0.0/0"] },
+    ],
+    egress: [
+      {
+        fromPort: 0,
+        toPort: 0,
+        protocol: '-1',
+        cidrBlocks: ['0.0.0.0/0'],
+      }
+    ],
+    tags: {
+      Name: `sg ${env} web`
+    }
+  }
+);
 
-// const server = new aws.ec2.Instance("web-server", {
-//     ami: "ami-02892a4ea9bfa2192",
-//     instanceType: "t2.micro",
-//     vpcSecurityGroupIds: [ group.id ],
-//     userData: userData,
-//     tags: {
-//       Name: `ec2 ${env} web`
-//     }
-// });
+const userData =
+`#!/bin/bash
+echo "Hello, World! tetete ${env}}" > index.html
+nohup python -m SimpleHTTPServer 80 &`;
 
-// export const publicIp = server.publicIp;
-// export const publicDns = server.publicDns;
 
+const publicServer = new aws.ec2.Instance(`puclic-${env}-web-server`, {
+    ami: "ami-02892a4ea9bfa2192",
+    instanceType: "t2.micro",
+    vpcSecurityGroupIds: [ group.id ],
+    userData: userData,
+    subnetId: publicSubnet0.id,
+    associatePublicIpAddress: true,
+    keyName: ec2Key,
+    tags: {
+      Name: `puclic ec2 ${env} web`
+    }
+});
+
+const privateServer = new aws.ec2.Instance(`private-${env}-web-server`, {
+  ami: "ami-02892a4ea9bfa2192",
+  instanceType: "t2.micro",
+  vpcSecurityGroupIds: [ group.id ],
+  userData: userData,
+  subnetId: privateSubnet1.id,
+  keyName: ec2Key,
+  tags: {
+    Name: `private ec2 ${env} web`
+  }
+});
+
+export const publicIp = publicServer.publicIp;
+export const publicPrivateIp = publicServer.publicIp;
+export const publicDns = publicServer.publicDns;
+export const publicPrivateDns = publicServer.privateDns;
+
+export const privateIp = privateServer.privateIp;
+export const privateDns = privateServer.privateDns;
